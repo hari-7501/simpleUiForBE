@@ -239,9 +239,14 @@
       <div class="filter-label">Date Ranges</div>
       <div class="grid-2" style="gap:16px">
         <div class="date-section">
-          <div class="date-section-header">
-            <span class="date-section-label">Overdue Range</span>
-            <label class="switch"><input type="checkbox" id="overdueOn" onchange="toggleDateSection('overdue')"><span class="slider"></span></label>
+          <div class="date-section-header" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <span class="date-section-label">Overdue</span>
+            <div class="toggle-row" style="margin:0">
+              <button class="toggle-btn active" data-filter="overdue" data-mode="off">Off</button>
+              <button class="toggle-btn" data-filter="overdue" data-mode="bool">Boolean</button>
+              <button class="toggle-btn" data-filter="overdue" data-mode="range">Range</button>
+              <button class="toggle-btn" data-filter="overdue" data-mode="both">Both</button>
+            </div>
           </div>
           <div id="overdueDateFields" style="display:none" class="date-fields">
             <div class="grid-2" style="margin-top:8px">
@@ -251,9 +256,14 @@
           </div>
         </div>
         <div class="date-section">
-          <div class="date-section-header">
-            <span class="date-section-label">Due Soon Range</span>
-            <label class="switch"><input type="checkbox" id="dueSoonOn" onchange="toggleDateSection('dueSoon')"><span class="slider"></span></label>
+          <div class="date-section-header" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <span class="date-section-label">Due Soon</span>
+            <div class="toggle-row" style="margin:0">
+              <button class="toggle-btn active" data-filter="dueSoon" data-mode="off">Off</button>
+              <button class="toggle-btn" data-filter="dueSoon" data-mode="bool">Boolean</button>
+              <button class="toggle-btn" data-filter="dueSoon" data-mode="range">Range</button>
+              <button class="toggle-btn" data-filter="dueSoon" data-mode="both">Both</button>
+            </div>
           </div>
           <div id="dueSoonDateFields" style="display:none" class="date-fields">
             <div class="grid-2" style="margin-top:8px">
@@ -313,11 +323,21 @@
 <script>
   const API_BASE = 'https://api.niocashflo.ai/api/cashflo/contacts';
   const toggleState = { hasPromise: '', hasAutomation: '', automationType: new Set() };
+  const filterMode = { overdue: 'off', dueSoon: 'off' };
 
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const field = btn.dataset.field, val = btn.dataset.val;
-      if (field === 'automationType') {
+      const filter = btn.dataset.filter, mode = btn.dataset.mode;
+
+      if (filter) {
+        // overdue / dueSoon mode selector
+        document.querySelectorAll(`[data-filter="${filter}"]`).forEach(b => b.classList.remove('active', 'active-green'));
+        filterMode[filter] = mode;
+        btn.classList.add(mode === 'off' ? 'active' : 'active-green');
+        const dateFieldId = filter === 'overdue' ? 'overdueDateFields' : 'dueSoonDateFields';
+        document.getElementById(dateFieldId).style.display = (mode === 'range' || mode === 'both') ? '' : 'none';
+      } else if (field === 'automationType') {
         if (toggleState.automationType.has(val)) { toggleState.automationType.delete(val); btn.classList.remove('active'); }
         else { toggleState.automationType.add(val); btn.classList.add('active'); }
       } else {
@@ -329,12 +349,6 @@
     });
   });
 
-  function toggleDateSection(s) {
-    const on = document.getElementById(s === 'overdue' ? 'overdueOn' : 'dueSoonOn').checked;
-    document.getElementById(s === 'overdue' ? 'overdueDateFields' : 'dueSoonDateFields').style.display = on ? '' : 'none';
-    updateUrlPreview();
-  }
-
   function buildParams() {
     const params = new URLSearchParams();
     const v = id => document.getElementById(id).value;
@@ -345,13 +359,19 @@
     if (toggleState.hasPromise !== '') params.append('has_promise', toggleState.hasPromise);
     if (toggleState.hasAutomation !== '') params.append('has_automation', toggleState.hasAutomation);
     toggleState.automationType.forEach(t => params.append('automation_type', t));
-    if (document.getElementById('overdueOn').checked) {
-      if (v('overdueStart')) params.append('overdue_start', v('overdueStart'));
-      if (v('overdueEnd')) params.append('overdue_end', v('overdueEnd'));
+    if (filterMode.overdue !== 'off') {
+      if (filterMode.overdue === 'bool' || filterMode.overdue === 'both') params.append('overdue', 'true');
+      if (filterMode.overdue === 'range' || filterMode.overdue === 'both') {
+        if (v('overdueStart')) params.append('overdue_start', v('overdueStart'));
+        if (v('overdueEnd')) params.append('overdue_end', v('overdueEnd'));
+      }
     }
-    if (document.getElementById('dueSoonOn').checked) {
-      if (v('dueSoonStart')) params.append('due_soon_start', v('dueSoonStart'));
-      if (v('dueSoonEnd')) params.append('due_soon_end', v('dueSoonEnd'));
+    if (filterMode.dueSoon !== 'off') {
+      if (filterMode.dueSoon === 'bool' || filterMode.dueSoon === 'both') params.append('due_soon', 'true');
+      if (filterMode.dueSoon === 'range' || filterMode.dueSoon === 'both') {
+        if (v('dueSoonStart')) params.append('due_soon_start', v('dueSoonStart'));
+        if (v('dueSoonEnd')) params.append('due_soon_end', v('dueSoonEnd'));
+      }
     }
     const min = v('minBalance'); if (min !== '') params.append('min_balance', min);
     return params;
